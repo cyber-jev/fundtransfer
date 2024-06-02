@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from users.models import User
 from .serializers import UserSerializer
+from decimal import Decimal
 
 
 class CreateUserView(generics.CreateAPIView):
@@ -23,17 +24,32 @@ class CreateUserView(generics.CreateAPIView):
         return super().create(request, *args, **kwargs)
 
 
-class FundUserView(generics.GeneralAPIView):
+class FundUserView(generics.GenericAPIView):
     serializer_class = UserSerializer
 
     def post(self, request, *args, **kwargs):
-        user = User.objects.get(phone_number=request.data.get("phone_number"))
+        # user = User.objects.get(phone_number=request.data.get("phone_number"))
+        phone_number = request.data.get("phone_number")
         amount = request.data.get("amount")
-        if user:
-            user.balance += float(amount)
+        try:
+            user = User.objects.get(phone_number=request.data.get("phone_number"))
+            user.balance += Decimal(amount)
             user.save()
-            return Response({"status": "Account funded successfully"})
-        return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response(
+                {"status": "Account funded successfully"}, status=status.HTTP_200_OK
+            )
+        except User.DoesNotExist:
+            return Response(
+                {"error": "User not found"}, status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        # if user:
+        #     user.balance += Decimal(amount)
+        #     user.save()
+        #     return Response({"status": "Account funded successfully"}, status=status.HTTP_200_OK)
+        # return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
 
 
 class ListUsersView(generics.ListAPIView):
